@@ -1,0 +1,564 @@
+<!doctype html>
+<html lang="en-NZ">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BNZ Player Registrations</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&family=Source+Sans+3:wght@400;600;700&display=swap">
+<style>
+/* Layout: one operational column. Header and controls, headline tiles, season-vs-season chart, club table beside the mix panels, watch list, data log. */
+:root{
+  --bg:#f5f6f8; --panel:#ffffff; --ink:#17202b; --muted:#5a6573; --faint:#8a94a1; --line:#dde2e8; --line-strong:#c4ccd6;
+  --accent:#1d4e89; --accent-soft:rgba(29,78,137,.11); --prev:#8d97a5;
+  --up:#1d7a46; --up-soft:rgba(29,122,70,.11); --down:#b3332b; --down-soft:rgba(179,51,43,.10); --warn:#9a6200; --warn-soft:rgba(154,98,0,.11);
+  --font-body:"Source Sans 3","Segoe UI",system-ui,-apple-system,sans-serif;
+  --font-num:"Barlow Condensed","Arial Narrow","Roboto Condensed",system-ui,sans-serif;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0f141a; --panel:#161d26; --ink:#e5eaf0; --muted:#9ba7b5; --faint:#738091; --line:#28323e; --line-strong:#3a4654;
+  --accent:#7fb1ec; --accent-soft:rgba(127,177,236,.15); --prev:#6f7b8b;
+  --up:#52c285; --up-soft:rgba(82,194,133,.13); --down:#f07d74; --down-soft:rgba(240,125,116,.13); --warn:#e3ab45; --warn-soft:rgba(227,171,69,.14);
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f141a; --panel:#161d26; --ink:#e5eaf0; --muted:#9ba7b5; --faint:#738091; --line:#28323e; --line-strong:#3a4654;
+  --accent:#7fb1ec; --accent-soft:rgba(127,177,236,.15); --prev:#6f7b8b;
+  --up:#52c285; --up-soft:rgba(82,194,133,.13); --down:#f07d74; --down-soft:rgba(240,125,116,.13); --warn:#e3ab45; --warn-soft:rgba(227,171,69,.14);
+  color-scheme:dark}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:15px;line-height:1.45}
+.wrap{max-width:1180px;margin:0 auto;padding:24px 16px 48px;display:flex;flex-direction:column;gap:20px}
+h1,h2,h3{margin:0;text-wrap:balance}
+h1{font-size:1.6rem;font-weight:700;letter-spacing:-.01em}
+h2{font-size:1rem;font-weight:700}
+.sub{color:var(--muted);margin-top:2px}
+.num{font-family:var(--font-num);font-variant-numeric:tabular-nums}
+.tab{font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+.label{font-size:.72rem;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+
+header.top{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:flex-end;justify-content:space-between}
+.controls{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end}
+.field{display:flex;flex-direction:column;gap:4px}
+select,.btn{font:inherit;font-size:.92rem;border:1px solid var(--line-strong);background:var(--panel);color:var(--ink);border-radius:8px;padding:7px 10px;min-height:36px}
+.btn{cursor:pointer;font-weight:600;display:inline-flex;align-items:center;gap:6px}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--bg)}
+.btn:hover{border-color:var(--accent)}
+.btn:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn[disabled]{opacity:.55;cursor:default}
+.file-btn input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px;min-width:0}
+.panel-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:6px 16px;margin-bottom:12px}
+
+.notice{border-radius:var(--r);padding:14px 16px;border:1px solid var(--line);background:var(--panel)}
+.notice.err{border-color:var(--down);background:var(--down-soft)}
+.notice.ok{border-color:var(--up);background:var(--up-soft)}
+.upload-list{margin:10px 0 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px}
+.upload-list li{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:baseline}
+.upload-actions{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap}
+.chip{display:inline-block;font-size:.78rem;font-weight:600;padding:1px 8px;border-radius:999px;background:var(--accent-soft);color:var(--accent)}
+.chip.warn{background:var(--warn-soft);color:var(--warn)}
+
+.tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+@media (max-width:820px){.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.tile{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.tile .big{font-size:2.6rem;font-weight:600;line-height:1.05}
+.tile .big.up{color:var(--up)} .tile .big.down{color:var(--down)} .tile .big.warn{color:var(--warn)}
+.tile .foot{color:var(--muted);font-size:.88rem}
+
+.chart-wrap{position:relative}
+.chart-wrap svg{display:block;width:100%;height:auto;overflow:visible}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:.88rem;color:var(--muted)}
+.key{display:inline-flex;align-items:center;gap:6px}
+.key i{display:inline-block;width:18px;height:0;border-top:3px solid var(--accent)}
+.key i.prev{border-top:2px dashed var(--prev)}
+.tip{position:absolute;pointer-events:none;background:var(--panel);border:1px solid var(--line-strong);border-radius:8px;padding:8px 10px;font-size:.85rem;box-shadow:0 4px 14px rgba(0,0,0,.12);min-width:150px;z-index:2}
+.tip b{display:block;margin-bottom:2px}
+.tip .row{display:flex;justify-content:space-between;gap:12px}
+
+.grid2{display:grid;grid-template-columns:minmax(0,2.2fr) minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:980px){.grid2{grid-template-columns:minmax(0,1fr)}}
+.stack{display:flex;flex-direction:column;gap:20px;min-width:0}
+
+.table-scroll{overflow-x:auto;margin:0 -16px;padding:0 16px}
+table{border-collapse:collapse;width:100%;font-size:.9rem}
+th,td{padding:7px 8px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--line)}
+th:first-child,td:first-child{text-align:left;padding-left:0}
+thead th{font-size:.72rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--line-strong)}
+thead th button{all:unset;cursor:pointer}
+thead th button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+thead th[aria-sort] button{color:var(--ink)}
+td.zero{color:var(--faint)}
+td.ytd{font-weight:700}
+.club-btn{all:unset;cursor:pointer;display:flex;flex-direction:column;line-height:1.2}
+.club-btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.club-btn .name{font-weight:600}
+.club-btn .reg{font-size:.78rem;color:var(--muted)}
+.club-btn .caret{font-size:.7rem;color:var(--faint)}
+tr.noclub .name{font-weight:400;font-style:italic;color:var(--muted)}
+tr.total td{border-top:1px solid var(--line-strong);border-bottom:0;font-weight:700}
+tr.detail td{background:var(--bg);text-align:left;padding:10px 12px}
+.pill{display:inline-block;min-width:44px;text-align:center;font-weight:700;font-size:.82rem;border-radius:999px;padding:1px 8px}
+.pill.up{background:var(--up-soft);color:var(--up)}
+.pill.down{background:var(--down-soft);color:var(--down)}
+.pill.flat{background:var(--accent-soft);color:var(--muted)}
+.pill.new{background:var(--accent-soft);color:var(--accent)}
+
+.bars{display:flex;flex-direction:column;gap:10px}
+.bar-row{display:grid;grid-template-columns:92px minmax(0,1fr) 48px;gap:10px;align-items:center;font-size:.9rem}
+.bar-track{position:relative;height:14px;background:var(--bg);border-radius:4px}
+.bar-fill{position:absolute;left:0;top:0;bottom:0;background:var(--accent);border-radius:4px}
+.bar-mark{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--prev)}
+.bar-row .v{text-align:right;font-weight:700}
+.bar-note{font-size:.8rem;color:var(--muted);margin-top:8px}
+
+.watch{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+@media (max-width:900px){.watch{grid-template-columns:minmax(0,1fr)}}
+.watch ul{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}
+.watch li{display:flex;justify-content:space-between;gap:10px;font-size:.92rem;border-left:3px solid var(--line-strong);padding-left:8px}
+.watch li.down{border-left-color:var(--down)} .watch li.none{border-left-color:var(--warn)} .watch li.data{border-left-color:var(--accent)}
+.watch li span:last-child{color:var(--muted);text-align:right}
+.empty{color:var(--muted);font-size:.9rem;margin-top:8px}
+
+.log{font-size:.86rem}
+.log td,.log th{white-space:normal;text-align:left}
+.log td.tab{text-align:right}
+.footnote{font-size:.82rem;color:var(--muted)}
+.loading{padding:40px 0;text-align:center;color:var(--muted)}
+@media (prefers-reduced-motion:no-preference){.bar-fill{transition:width .3s ease}}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Player Registrations</h1>
+      <div class="sub" id="subline">Baseball New Zealand national membership fees, by club and month</div>
+    </div>
+    <div class="controls">
+      <div class="field"><label class="label" for="season">Season</label><select id="season"></select></div>
+      <div class="field"><label class="label" for="region">Region</label><select id="region"><option value="">All regions</option></select></div>
+      <label class="btn primary file-btn" id="uploadBtn" hidden>
+        <input type="file" id="fileInput" accept=".csv,text/csv" multiple>
+        <span>Upload monthly CSV</span>
+      </label>
+    </div>
+  </header>
+
+  <div id="uploadPanel" hidden></div>
+
+  <div id="loading" class="loading">Loading registrations…</div>
+
+  <div id="main" class="stack" hidden>
+    <section class="tiles" aria-label="Headline numbers">
+      <div class="tile"><span class="label">Registered to date</span><span class="big num" id="tTotal">—</span><span class="foot" id="tTotalFoot"></span></div>
+      <div class="tile"><span class="label">Vs same date last season</span><span class="big num" id="tChange">—</span><span class="foot" id="tChangeFoot"></span></div>
+      <div class="tile"><span class="label">Of last season's final total</span><span class="big num" id="tShare">—</span><span class="foot" id="tShareFoot"></span></div>
+      <div class="tile"><span class="label">Records to check</span><span class="big num" id="tIssues">—</span><span class="foot" id="tIssuesFoot"></span></div>
+    </section>
+
+    <section class="panel" id="cumulative">
+      <div class="panel-head">
+        <h2>Cumulative registrations</h2>
+        <div class="legend"><span class="key"><i></i><span id="legS">This season</span></span><span class="key"><i class="prev"></i><span id="legP">Last season</span></span></div>
+      </div>
+      <div class="chart-wrap" id="chartWrap"><div class="tip" id="tip" hidden></div></div>
+    </section>
+
+    <div class="grid2">
+      <section class="panel" id="clubs">
+        <div class="panel-head">
+          <h2>Registrations by club</h2>
+          <span class="footnote">Select a club to compare its months with last season</span>
+        </div>
+        <div class="table-scroll"><table id="clubTable"></table></div>
+        <p class="footnote" id="tableNote"></p>
+      </section>
+      <div class="stack">
+        <section class="panel" id="tiers">
+          <div class="panel-head"><h2>By membership tier</h2></div>
+          <div class="bars" id="tierBars"></div>
+          <div class="bar-note" id="tierNote"></div>
+        </section>
+        <section class="panel" id="regions">
+          <div class="panel-head"><h2>By region</h2></div>
+          <div class="bars" id="regionBars"></div>
+          <div class="bar-note">Hamilton Raiders are counted under WaiBOP.</div>
+        </section>
+      </div>
+    </div>
+
+    <section class="panel" id="watchlist">
+      <div class="panel-head"><h2>Watch list</h2><span class="footnote" id="watchNote"></span></div>
+      <div class="watch">
+        <div><div class="label">Behind last season</div><ul id="wBehind"></ul></div>
+        <div><div class="label">No registrations yet</div><ul id="wNone"></ul></div>
+        <div><div class="label">Data to tidy in GameDay</div><ul id="wData"></ul></div>
+      </div>
+    </section>
+
+    <section class="panel" id="datalog">
+      <div class="panel-head"><h2>Data loaded</h2><span class="footnote">Uploads are saved in this browser only. Uploading a month again replaces it.</span></div>
+      <div id="localBar" class="upload-actions" hidden style="margin:0 0 12px"><button type="button" class="btn" id="clearLocal">Remove my uploads</button><span class="footnote" id="localNote"></span></div>
+      <div class="table-scroll"><table class="log" id="logTable"></table></div>
+    </section>
+  </div>
+</div>
+
+<script src="data.js"></script>
+<script>
+(function(){
+  const MONTHS=['Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar','Apr','May','Jun'];
+  const MONTH_LONG=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const CAL_SHORT=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const TIERS=[['J','Junior'],['Y','Youth'],['S','Senior']];
+  const REGION_ORDER=['Auckland','WaiBOP','Wellington','Canterbury','Te Tau Ihu','Masters','Other'];
+  const $=id=>document.getElementById(id);
+  const fmt=n=>n.toLocaleString('en-NZ');
+  const el=(tag,attrs,...kids)=>{const e=document.createElement(tag);if(attrs)for(const k in attrs){if(k==='class')e.className=attrs[k];else if(k==='text')e.textContent=attrs[k];else e.setAttribute(k,attrs[k]);}for(const c of kids){if(c==null)continue;e.append(c.nodeType?c:String(c));}return e;};
+
+  let store={};            // month id -> doc body
+  let canWrite=true;
+  const LS_KEY='bnz-rego-months-v1';
+  let local={};
+  function loadLocal(){try{const t=localStorage.getItem(LS_KEY);local=t?JSON.parse(t):{};}catch(e){local={};}}
+  function saveLocal(){localStorage.setItem(LS_KEY,JSON.stringify(local));}
+  function rebuild(){store=Object.assign({},window.BNZ_BASELINE||{},local);render();}
+  let sortKey='ytd', sortDir=-1, openClub=null;
+  const state={season:null,region:''};
+
+  /* ---------- naming ---------- */
+  function regionOf(club,assoc){
+    if(/Hamilton Raiders/i.test(club))return 'WaiBOP';
+    if(/Auckland/i.test(assoc))return 'Auckland';
+    if(/Waikato|Bay of Plenty/i.test(assoc))return 'WaiBOP';
+    if(/Wellington/i.test(assoc))return 'Wellington';
+    if(/Canterbury/i.test(assoc))return 'Canterbury';
+    if(/Te Tau Ihu/i.test(assoc))return 'Te Tau Ihu';
+    if(/Masters/i.test(assoc))return 'Masters';
+    return 'Other';
+  }
+  function shortClub(club,assoc){
+    if(!club)return 'No club recorded';
+    if(/^Central Baseball Club/i.test(club))return 'Central (Wellington)';
+    return club.replace(/\s+Baseball Club( Inc(orporated)?)?$/i,'').replace(/\s+Baseball$/i,'').replace(/\s+Inc(orporated)?$/i,'').trim();
+  }
+  function seasonStartYear(s){return parseInt(s.slice(0,4),10);}
+  function prevSeason(s){const y=seasonStartYear(s)-1;return y+'/'+String(y+1).slice(2);}
+  function dayIndex(iso,season){const y=+iso.slice(0,4),m=+iso.slice(5,7),d=+iso.slice(8,10);return Math.round((Date.UTC(y,m-1,d)-Date.UTC(seasonStartYear(season),6,1))/864e5);}
+  function monthIdx(iso){return (+iso.slice(5,7)+5)%12;}
+  function niceDate(iso){return +iso.slice(8,10)+' '+CAL_SHORT[+iso.slice(5,7)-1]+' '+iso.slice(0,4);}
+  function dateFromDay(day,season){const t=new Date(Date.UTC(seasonStartYear(season),6,1)+day*864e5);return t.getUTCDate()+' '+CAL_SHORT[t.getUTCMonth()];}
+
+  /* ---------- data assembly ---------- */
+  function allRows(){
+    const out=[];
+    for(const id in store){const doc=store[id];if(!doc||!Array.isArray(doc.rows))continue;
+      for(const r of doc.rows){if(!Array.isArray(r)||typeof r[0]!=='string')continue;
+        const club=String(r[2]||''),assoc=String(r[3]||'');
+        out.push({d:r[0],t:r[1],club,assoc,season:doc.season,region:regionOf(club,assoc),key:club?club:'~'+assoc});}}
+    return out;
+  }
+  function seasons(rows){return [...new Set(rows.map(r=>r.season))].sort().reverse();}
+
+  /* ---------- render ---------- */
+  function render(){
+    const rows=allRows();
+    const ss=seasons(rows);
+    $('loading').hidden=true;
+    if(!rows.length){$('main').hidden=true;$('loading').hidden=false;$('loading').textContent=canWrite?'No registrations stored yet. Upload a GameDay player registration export to start.':'No registrations stored yet.';return;}
+    $('main').hidden=false;
+    if(!state.season||!ss.includes(state.season))state.season=ss[0];
+    const seasonSel=$('season');
+    if(seasonSel.options.length!==ss.length||[...seasonSel.options].some((o,i)=>o.value!==ss[i])){seasonSel.replaceChildren(...ss.map(s=>new Option(s,s)));}
+    seasonSel.value=state.season;
+    const regs=REGION_ORDER.filter(r=>rows.some(x=>x.region===r));
+    const regSel=$('region');
+    const wantOpts=['',...regs];
+    if(regSel.options.length!==wantOpts.length||[...regSel.options].some((o,i)=>o.value!==wantOpts[i])){regSel.replaceChildren(new Option('All regions',''),...regs.map(r=>new Option(r,r)));}
+    if(state.region&&!regs.includes(state.region))state.region='';
+    regSel.value=state.region;
+
+    const S=state.season,P=prevSeason(S),hasP=ss.includes(P);
+    const sAll=rows.filter(r=>r.season===S);
+    const latest=sAll.reduce((m,r)=>r.d>m?r.d:m,'');
+    const L=dayIndex(latest,S);
+    const inReg=r=>!state.region||r.region===state.region;
+    const sRows=sAll.filter(inReg);
+    const pRowsAll=hasP?rows.filter(r=>r.season===P&&inReg(r)):[];
+    const pYtd=pRowsAll.filter(r=>dayIndex(r.d,P)<=L);
+    $('subline').textContent='Baseball New Zealand national membership fees · '+S+' data to '+niceDate(latest)+(state.region?' · '+state.region:'');
+    $('legS').textContent=S; $('legP').textContent=hasP?P:'No earlier season loaded';
+
+    // tiles
+    $('tTotal').textContent=fmt(sRows.length);
+    $('tTotalFoot').textContent=state.region?state.region+' clubs':'All clubs';
+    const ch=$('tChange');
+    if(hasP&&pYtd.length){const diff=sRows.length-pYtd.length,pct=Math.round(diff/pYtd.length*100);
+      ch.textContent=(pct>0?'+':'')+pct+'%';ch.className='big num '+(diff>0?'up':diff<0?'down':'');
+      $('tChangeFoot').textContent=fmt(sRows.length)+' vs '+fmt(pYtd.length)+' by '+dateFromDay(L,P)+' '+P.slice(0,4);}
+    else{ch.textContent='—';ch.className='big num';$('tChangeFoot').textContent=hasP?'No registrations by this date last season':'Load '+P+' to compare';}
+    if(hasP&&pRowsAll.length){$('tShare').textContent=Math.round(sRows.length/pRowsAll.length*100)+'%';$('tShareFoot').textContent=fmt(sRows.length)+' of '+fmt(pRowsAll.length)+' in '+P;}
+    else{$('tShare').textContent='—';$('tShareFoot').textContent=hasP?'No '+P+' registrations in this region':'Load '+P+' to compare';}
+    const noClub=sRows.filter(r=>!r.club).length;
+    const seen=new Map();let dups=0;for(const r of sRows){const k=r.d+'|'+r.t+'|'+r.club+'|'+r.assoc;if(seen.has(k))dups++;else seen.set(k,1);}
+    const iss=noClub+dups;const ti=$('tIssues');ti.textContent=fmt(iss);ti.className='big num'+(iss?' warn':'');
+    $('tIssuesFoot').textContent=noClub+' with no club · '+dups+' possible duplicate'+(dups===1?'':'s');
+
+    drawChart(sRows,pRowsAll,S,P,hasP,L);
+    drawTable(sRows,pRowsAll,pYtd,S,P,hasP,L);
+    drawBars(sRows,pYtd,hasP,P,L);
+    drawWatch(sRows,pRowsAll,pYtd,hasP,P,noClub,dups,L);
+    drawLog();
+  }
+
+  function cumulative(rs,season,maxDay){
+    const counts=new Array(maxDay+1).fill(0);
+    for(const r of rs){const i=dayIndex(r.d,season);if(i>=0&&i<=maxDay)counts[i]++;}
+    let c=0;return counts.map(v=>c+=v);
+  }
+  function monthEndDay(idx,season){const y=seasonStartYear(season)+(idx>=6?1:0),m=(idx+6)%12;return Math.round((Date.UTC(y,m+1,1)-Date.UTC(seasonStartYear(season),6,1))/864e5)-1;}
+
+  function drawChart(sRows,pRows,S,P,hasP,L){
+    const wrap=$('chartWrap');const tip=$('tip');
+    wrap.querySelectorAll('svg').forEach(n=>n.remove());
+    const maxM=Math.max(...sRows.map(r=>monthIdx(r.d)),...pRows.map(r=>monthIdx(r.d)),0);
+    const endDay=monthEndDay(Math.max(maxM,monthIdx(sRows.length?sRows[0].d:'2000-07-01')),S);
+    const sC=cumulative(sRows,S,endDay).slice(0,L+1);
+    const pC=hasP?cumulative(pRows,P,endDay):[];
+    const W=Math.max(320,wrap.clientWidth||800),H=W<560?240:290;
+    const m={l:44,r:56,t:12,b:28};
+    const yMaxRaw=Math.max(sC[sC.length-1]||0,pC.length?pC[pC.length-1]:0,10);
+    const step=niceStep(yMaxRaw/4);const yMax=Math.ceil(yMaxRaw/step)*step;
+    const x=d=>m.l+(W-m.l-m.r)*d/endDay, y=v=>m.t+(H-m.t-m.b)*(1-v/yMax);
+    const NS='http://www.w3.org/2000/svg';
+    const svg=document.createElementNS(NS,'svg');svg.setAttribute('viewBox','0 0 '+W+' '+H);svg.setAttribute('width','100%');svg.setAttribute('role','img');
+    svg.setAttribute('aria-label','Cumulative registrations '+S+(hasP?' compared with '+P:''));
+    const add=(tag,a)=>{const n=document.createElementNS(NS,tag);for(const k in a)n.setAttribute(k,a[k]);svg.appendChild(n);return n;};
+    for(let v=0;v<=yMax;v+=step){add('line',{x1:m.l,x2:W-m.r,y1:y(v),y2:y(v),stroke:'var(--line)','stroke-width':1});
+      const t=add('text',{x:m.l-8,y:y(v)+4,'text-anchor':'end','font-size':11,fill:'var(--muted)'});t.textContent=fmt(v);}
+    for(let i=0;i<=11;i++){const sd=i===0?0:monthEndDay(i-1,S)+1;if(sd>endDay)break;
+      add('line',{x1:x(sd),x2:x(sd),y1:H-m.b,y2:H-m.b+4,stroke:'var(--line-strong)'});
+      const nd=Math.min(monthEndDay(i,S),endDay);const t=add('text',{x:(x(sd)+x(nd))/2,y:H-8,'text-anchor':'middle','font-size':11,fill:'var(--muted)'});t.textContent=MONTHS[i];}
+    add('line',{x1:m.l,x2:W-m.r,y1:H-m.b,y2:H-m.b,stroke:'var(--line-strong)'});
+    const path=arr=>arr.map((v,i)=>(i?'L':'M')+x(i).toFixed(1)+' '+y(v).toFixed(1)).join(' ');
+    if(pC.length){add('path',{d:path(pC),fill:'none',stroke:'var(--prev)','stroke-width':2,'stroke-dasharray':'5 4'});
+      const pv=pC[Math.min(L,pC.length-1)];add('circle',{cx:x(Math.min(L,pC.length-1)),cy:y(pv),r:3.5,fill:'var(--prev)'});}
+    if(sC.length){add('path',{d:path(sC)+' L'+x(sC.length-1).toFixed(1)+' '+y(0)+' L'+x(0)+' '+y(0)+' Z',fill:'var(--accent-soft)',stroke:'none'});
+      add('path',{d:path(sC),fill:'none',stroke:'var(--accent)','stroke-width':3,'stroke-linejoin':'round'});
+      const lv=sC[sC.length-1];add('circle',{cx:x(sC.length-1),cy:y(lv),r:5,fill:'var(--accent)'});
+      const lt=add('text',{x:x(sC.length-1)+9,y:y(lv)+5,'font-size':15,'font-weight':600,fill:'var(--accent)','font-family':'var(--font-num)'});lt.textContent=fmt(lv);}
+    if(pC.length){const pt=add('text',{x:W-m.r+6,y:y(pC[pC.length-1])+4,'font-size':12,fill:'var(--muted)','font-family':'var(--font-num)'});pt.textContent=fmt(pC[pC.length-1]);}
+    const guide=add('line',{x1:0,x2:0,y1:m.t,y2:H-m.b,stroke:'var(--line-strong)','stroke-width':1,visibility:'hidden'});
+    const hit=add('rect',{x:m.l,y:m.t,width:W-m.l-m.r,height:H-m.t-m.b,fill:'transparent'});
+    const move=ev=>{const rect=svg.getBoundingClientRect();const px=(ev.clientX-rect.left)*W/rect.width;
+      const d=Math.max(0,Math.min(endDay,Math.round((px-m.l)/(W-m.l-m.r)*endDay)));
+      guide.setAttribute('x1',x(d));guide.setAttribute('x2',x(d));guide.setAttribute('visibility','visible');
+      tip.replaceChildren(el('b',{text:dateFromDay(d,S)}),
+        el('div',{class:'row'},el('span',{text:S}),el('strong',{text:d<sC.length?fmt(sC[d]):'—'})),
+        hasP?el('div',{class:'row'},el('span',{text:P}),el('span',{text:fmt(pC[d]||0)})):null);
+      tip.hidden=false;const tw=tip.offsetWidth,ww=wrap.clientWidth;let lx=x(d)*rect.width/W+12;if(lx+tw>ww)lx=x(d)*rect.width/W-tw-12;
+      tip.style.left=Math.max(0,lx)+'px';tip.style.top='8px';};
+    hit.addEventListener('pointermove',move);hit.addEventListener('pointerdown',move);
+    hit.addEventListener('pointerleave',()=>{tip.hidden=true;guide.setAttribute('visibility','hidden');});
+    wrap.appendChild(svg);
+  }
+  function niceStep(raw){const p=Math.pow(10,Math.floor(Math.log10(Math.max(raw,1))));const f=raw/p;return (f<=1?1:f<=2?2:f<=2.5?2.5:f<=5?5:10)*p;}
+
+  function drawTable(sRows,pRows,pYtd,S,P,hasP,L){
+    const maxM=Math.max(...sRows.map(r=>monthIdx(r.d)),...pRows.map(r=>monthIdx(r.d)),0);
+    const cols=MONTHS.slice(0,maxM+1);
+    const clubs=new Map();
+    const get=(r)=>{let c=clubs.get(r.key);if(!c){c={key:r.key,club:r.club,assoc:r.assoc,name:shortClub(r.club,r.assoc),region:r.region,m:new Array(12).fill(0),pm:new Array(12).fill(0),ytd:0,pytd:0,pall:0};clubs.set(r.key,c);}return c;};
+    for(const r of sRows){const c=get(r);c.m[monthIdx(r.d)]++;c.ytd++;}
+    for(const r of pRows){const c=get(r);c.pm[monthIdx(r.d)]++;c.pall++;if(dayIndex(r.d,P)<=L)c.pytd++;}
+    let list=[...clubs.values()].filter(c=>c.ytd>0||c.pall>0);
+    list.forEach(c=>c.change=hasP?c.ytd-c.pytd:0);
+    const val=(c,k)=>k==='name'?c.name.toLowerCase():k.startsWith('m')?c.m[+k.slice(1)]:c[k];
+    list.sort((a,b)=>{const na=!a.club,nb=!b.club;if(na!==nb)return na?1:-1;const va=val(a,sortKey),vb=val(b,sortKey);return (va<vb?-1:va>vb?1:0)*sortDir||b.ytd-a.ytd;});
+    const t=$('clubTable');
+    const head=el('tr');
+    const hcell=(label,key)=>{const th=el('th',{scope:'col'});if(sortKey===key)th.setAttribute('aria-sort',sortDir>0?'ascending':'descending');
+      const b=el('button',{type:'button',text:label+(sortKey===key?(sortDir>0?' ↑':' ↓'):'')});b.addEventListener('click',()=>{if(sortKey===key)sortDir=-sortDir;else{sortKey=key;sortDir=key==='name'?1:-1;}render();});th.append(b);return th;};
+    head.append(hcell('Club','name'));cols.forEach((mn,i)=>head.append(hcell(mn,'m'+i)));
+    head.append(hcell('To date','ytd'));
+    if(hasP){head.append(hcell('Last yr*','pytd'),hcell('Change','change'));}
+    const tb=el('tbody');
+    const tot=new Array(12).fill(0);let tYtd=0,tP=0;
+    for(const c of list){
+      const tr=el('tr',{class:c.club?'':'noclub'});
+      const btn=el('button',{type:'button',class:'club-btn','aria-expanded':String(openClub===c.key)},
+        el('span',{class:'name',text:c.name+(c.club?'':' · '+c.region)}),el('span',{class:'reg',text:c.club?c.region:''}));
+      btn.addEventListener('click',()=>{openClub=openClub===c.key?null:c.key;render();});
+      tr.append(el('td',null,btn));
+      cols.forEach((_,i)=>{tot[i]+=c.m[i];tr.append(el('td',{class:'tab'+(c.m[i]?'':' zero'),text:c.m[i]?fmt(c.m[i]):'0'}));});
+      tYtd+=c.ytd;tP+=c.pytd;
+      tr.append(el('td',{class:'tab ytd',text:fmt(c.ytd)}));
+      if(hasP){tr.append(el('td',{class:'tab muted',text:fmt(c.pytd)}));tr.append(el('td',null,changePill(c.ytd,c.pytd)));}
+      tb.append(tr);
+      if(openClub===c.key){const dtr=el('tr',{class:'detail'});const td=el('td',{colspan:String(cols.length+(hasP?4:2))});td.append(miniBars(c,cols.length,S,P,hasP));dtr.append(td);tb.append(dtr);}
+    }
+    const ttr=el('tr',{class:'total'});ttr.append(el('td',{text:'Total'}));cols.forEach((_,i)=>ttr.append(el('td',{class:'tab',text:fmt(tot[i])})));
+    ttr.append(el('td',{class:'tab',text:fmt(tYtd)}));if(hasP){ttr.append(el('td',{class:'tab muted',text:fmt(tP)}),el('td',null,changePill(tYtd,tP)));}
+    tb.append(ttr);
+    t.replaceChildren(el('thead',null,head),tb);
+    $('tableNote').textContent=hasP?'* Last yr is '+P+' registrations up to '+dateFromDay(L,P)+', the same point in the season as the latest '+S+' data.':'';
+  }
+  function changePill(a,b){
+    if(b===0&&a>0)return el('span',{class:'pill new',text:'New'});
+    const d=a-b;if(d===0)return el('span',{class:'pill flat',text:'0'});
+    return el('span',{class:'pill '+(d>0?'up':'down'),text:(d>0?'▲ +':'▼ ')+d});
+  }
+  function miniBars(c,n,S,P,hasP){
+    const box=el('div');const NS='http://www.w3.org/2000/svg';
+    const W=Math.max(300,Math.min(720,n*70)),H=150,m={l:8,r:8,t:18,b:22};
+    const svg=document.createElementNS(NS,'svg');svg.setAttribute('viewBox','0 0 '+W+' '+H);svg.setAttribute('width','100%');svg.style.maxWidth=W+'px';svg.style.display='block';
+    svg.setAttribute('role','img');svg.setAttribute('aria-label',c.name+' registrations by month, '+S+(hasP?' and '+P:''));
+    const add=(tag,a,txt)=>{const e=document.createElementNS(NS,tag);for(const k in a)e.setAttribute(k,a[k]);if(txt!=null)e.textContent=txt;svg.appendChild(e);return e;};
+    const mx=Math.max(1,...c.m.slice(0,n),...(hasP?c.pm.slice(0,n):[]));
+    const bw=(W-m.l-m.r)/n,inner=Math.min(22,bw/2.8);
+    for(let i=0;i<n;i++){const cx=m.l+bw*i+bw/2;const sh=(H-m.t-m.b)*c.m[i]/mx;
+      add('rect',{x:cx-(hasP?inner+1:inner/2),y:H-m.b-sh,width:inner,height:Math.max(sh,0.5),fill:'var(--accent)',rx:2});
+      if(c.m[i])add('text',{x:cx-(hasP?inner/2+1:0),y:H-m.b-sh-4,'text-anchor':'middle','font-size':10.5,fill:'var(--ink)'},c.m[i]);
+      if(hasP){const ph=(H-m.t-m.b)*c.pm[i]/mx;add('rect',{x:cx+1,y:H-m.b-ph,width:inner,height:Math.max(ph,0.5),fill:'var(--prev)',rx:2,opacity:.75});
+        if(c.pm[i])add('text',{x:cx+1+inner/2,y:H-m.b-ph-4,'text-anchor':'middle','font-size':10.5,fill:'var(--muted)'},c.pm[i]);}
+      add('text',{x:cx,y:H-6,'text-anchor':'middle','font-size':11,fill:'var(--muted)'},MONTHS[i]);}
+    add('line',{x1:m.l,x2:W-m.r,y1:H-m.b,y2:H-m.b,stroke:'var(--line-strong)'});
+    box.append(el('div',{class:'legend'},el('span',{class:'key'},el('i'),S),hasP?el('span',{class:'key'},el('i',{class:'prev'}),P+' (full months)'):null),svg);
+    return box;
+  }
+
+  function barRows(target,items,max){
+    target.replaceChildren(...items.map(it=>{const track=el('div',{class:'bar-track'});
+      const f=el('div',{class:'bar-fill'});f.style.width=(max?it.v/max*100:0)+'%';track.append(f);
+      if(it.p!=null){const mk=el('div',{class:'bar-mark',title:'Same date last season: '+it.p});mk.style.left='calc('+(max?Math.min(it.p/max,1)*100:0)+'% - 1px)';track.append(mk);}
+      return el('div',{class:'bar-row'},el('span',{text:it.label}),track,el('span',{class:'v tab',text:fmt(it.v)}));}));
+  }
+  function drawBars(sRows,pYtd,hasP,P,L){
+    const tiers=TIERS.map(([k,l])=>({label:l,v:sRows.filter(r=>r.t===k).length,p:hasP?pYtd.filter(r=>r.t===k).length:null}));
+    barRows($('tierBars'),tiers,Math.max(1,...tiers.map(t=>Math.max(t.v,t.p||0))));
+    $('tierNote').textContent=hasP?'Grey marker: same date last season ('+dateFromDay(L,P)+' '+P.slice(0,4)+').':'';
+    const regs=REGION_ORDER.map(r=>({label:r,v:sRows.filter(x=>x.region===r).length,p:hasP?pYtd.filter(x=>x.region===r).length:null})).filter(r=>r.v||r.p);
+    barRows($('regionBars'),regs,Math.max(1,...regs.map(t=>Math.max(t.v,t.p||0))));
+  }
+
+  function drawWatch(sRows,pRows,pYtd,hasP,P,noClub,dups,L){
+    const by=(rs)=>{const m=new Map();for(const r of rs){if(!r.club)continue;m.set(r.club,(m.get(r.club)||0)+1);}return m;};
+    const s=by(sRows),p=by(pYtd),pa=by(pRows);
+    const behind=[],none=[];
+    if(hasP){for(const [club,pv] of p){const sv=s.get(club)||0;if(sv>0&&sv<pv)behind.push({club,sv,pv});}
+      for(const [club,tot] of pa){if(!s.get(club))none.push({club,pv:p.get(club)||0,tot});}}
+    behind.sort((a,b)=>(a.sv-a.pv)-(b.sv-b.pv));none.sort((a,b)=>b.tot-a.tot);
+    const li=(cls,a,b)=>el('li',{class:cls},el('span',{text:a}),el('span',{text:b}));
+    const assocOf=c=>(sRows.find(r=>r.club===c)||pRows.find(r=>r.club===c)||{}).assoc||'';
+    $('wBehind').replaceChildren(...(behind.length?behind.map(b=>li('down',shortClub(b.club),b.sv+' vs '+b.pv)):[el('li',{class:''},el('span',{text:hasP?'No club is behind last season':'Load '+P+' to compare'}),el('span'))]));
+    $('wNone').replaceChildren(...(none.length?none.map(n=>li('none',shortClub(n.club,assocOf(n.club)),n.pv+' by now last year · '+n.tot+' total')):[el('li',{class:''},el('span',{text:hasP?'Every club from last season has started':'Load '+P+' to compare'}),el('span'))]));
+    const data=[];
+    if(noClub)data.push(li('data','Registrations with no club',fmt(noClub)));
+    if(dups)data.push(li('data','Possible duplicate payments',fmt(dups)));
+    if(sRows.some(r=>/Hamilton Raiders/i.test(r.club)&&/Auckland/i.test(r.assoc)))data.push(li('data','Hamilton Raiders tagged to Auckland','Shown as WaiBOP'));
+    $('wData').replaceChildren(...(data.length?data:[el('li',{class:''},el('span',{text:'Nothing to tidy'}),el('span'))]));
+    $('watchNote').textContent=hasP?'Compared with '+P+' at '+dateFromDay(L,P):'';
+  }
+
+  async function drawLog(){
+    const ids=Object.keys(store).sort().reverse();
+    const head=el('tr',null,el('th',{scope:'col',text:'Month'}),el('th',{scope:'col',text:'Season'}),el('th',{scope:'col',text:'Registrations'}),el('th',{scope:'col',text:'File'}),el('th',{scope:'col',text:'Uploaded'}));
+        const lb=$('localBar');const n=Object.keys(local).length;lb.hidden=!n;$('localNote').textContent=n?n+' month'+(n===1?'':'s')+' from your uploads, shown instead of the built-in data.':'';
+    const rows=ids.map(id=>{const d=store[id];const mo=+id.slice(5,7);
+      const who=d.source==='built-in'?'Built in':'Uploaded in this browser';
+      const when=d.uploadedAt?new Date(d.uploadedAt).toLocaleDateString('en-NZ',{day:'numeric',month:'short',year:'numeric'}):'';
+      return el('tr',null,el('td',{text:MONTH_LONG[mo-1]+' '+id.slice(0,4)}),el('td',{text:d.season||''}),el('td',{class:'tab',text:fmt(Array.isArray(d.rows)?d.rows.length:0)}),el('td',{text:d.fileName||''}),el('td',{text:[when,who].filter(Boolean).join(' · ')}));});
+    $('logTable').replaceChildren(el('thead',null,head),el('tbody',null,...rows));
+  }
+
+  /* ---------- CSV upload ---------- */
+  function parseCSV(text){
+    text=text.replace(/^﻿/,'');const rows=[];let row=[],f='',q=false;
+    for(let i=0;i<text.length;i++){const c=text[i];
+      if(q){if(c==='"'){if(text[i+1]==='"'){f+='"';i++;}else q=false;}else f+=c;}
+      else if(c==='"')q=true;else if(c===','){row.push(f);f='';}else if(c==='\n'){row.push(f);rows.push(row);row=[];f='';}else if(c!=='\r')f+=c;}
+    if(f!==''||row.length){row.push(f);rows.push(row);}
+    return rows.filter(r=>r.some(x=>x.trim()!==''));
+  }
+  function parseExport(name,text){
+    const rows=parseCSV(text);
+    if(!rows.length)return {error:name+' is empty.'};
+    const h=rows[0].map(x=>x.trim().toLowerCase());
+    const ix={p:h.indexOf('product'),d:h.indexOf('transaction date'),c:h.indexOf('member club'),a:h.indexOf('association')};
+    if(Object.values(ix).some(v=>v<0))return {error:name+" doesn't look like a GameDay player registration export. It needs the columns Product, Transaction Date, Member Club and Association."};
+    const months={};let bad=0;
+    for(const r of rows.slice(1)){
+      const m=/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2}))?/.exec((r[ix.d]||'').trim());
+      if(!m){bad++;continue;}
+      const pad=v=>String(v).padStart(2,'0');
+      const iso=m[3]+'-'+pad(m[2])+'-'+pad(m[1])+'T'+pad(m[4]||0)+':'+pad(m[5]||0);
+      const prod=r[ix.p]||'';const sm=/(\d{4})\/(\d{4})/.exec(prod);
+      const y=+m[3],mo=+m[2];const season=sm?sm[1]+'/'+sm[2].slice(2):(mo>=7?y+'/'+String(y+1).slice(2):(y-1)+'/'+String(y).slice(2));
+      const tm=/(Junior|Youth|Senior)/i.exec(prod);const tier=tm?tm[1][0].toUpperCase():'?';
+      const key=iso.slice(0,7);
+      (months[key]=months[key]||{season,rows:[]}).rows.push([iso,tier,(r[ix.c]||'').trim(),(r[ix.a]||'').trim()]);
+    }
+    if(!Object.keys(months).length)return {error:name+' has no registrations with a readable transaction date.'};
+    return {months,bad,name};
+  }
+  let pending=null;
+  async function onFiles(files){
+    const panel=$('uploadPanel');const parsed={};const errors=[];let bad=0;
+    for(const f of files){const res=parseExport(f.name,await f.text());if(res.error){errors.push(res.error);continue;}bad+=res.bad;
+      for(const k in res.months){const mo=res.months[k];if(!parsed[k])parsed[k]={season:mo.season,rows:[],fileName:f.name};else parsed[k].fileName+=', '+f.name;parsed[k].rows.push(...mo.rows);}}
+    const keys=Object.keys(parsed).sort();
+    panel.hidden=false;
+    if(!keys.length){panel.replaceChildren(el('div',{class:'notice err'},el('strong',{text:'Nothing to add. '}),errors.join(' ')));pending=null;return;}
+    pending=parsed;
+    const items=keys.map(k=>{const p=parsed[k];const ex=store[k];const exN=ex&&Array.isArray(ex.rows)?ex.rows.length:0;
+      const note=!ex?el('span',{class:'chip',text:'New month'}):p.rows.length<exN?el('span',{class:'chip warn',text:'Fewer than the '+fmt(exN)+' stored. Check this is the full month.'}):el('span',{class:'chip',text:'Replaces '+fmt(exN)+' stored'});
+      return el('li',null,el('strong',{text:MONTH_LONG[+k.slice(5,7)-1]+' '+k.slice(0,4)}),el('span',{class:'tab',text:fmt(p.rows.length)+' registrations · '+p.season}),note);});
+    const confirm=el('button',{type:'button',class:'btn primary',text:'Save to dashboard'});
+    const cancel=el('button',{type:'button',class:'btn',text:'Cancel'});
+    cancel.addEventListener('click',()=>{pending=null;panel.hidden=true;panel.replaceChildren();});
+    confirm.addEventListener('click',()=>saveUpload(confirm,cancel));
+    panel.replaceChildren(el('div',{class:'notice'},el('strong',{text:'Ready to add'}),el('ul',{class:'upload-list'},...items),
+      (bad||errors.length)?el('p',{class:'footnote',text:[bad?bad+' row'+(bad===1?'':'s')+' skipped because the date could not be read.':'',...errors].filter(Boolean).join(' ')}):null,
+      el('div',{class:'upload-actions'},confirm,cancel)));
+  }
+  async function saveUpload(confirm,cancel){
+    if(!pending)return;confirm.disabled=true;cancel.disabled=true;
+    const keys=Object.keys(pending).sort();const prev=JSON.stringify(local);
+    try{
+      for(const k of keys){const p=pending[k];p.rows.sort((a,b)=>a[0]<b[0]?-1:a[0]>b[0]?1:0);
+        local[k]={season:p.season,month:k,fileName:p.fileName,rows:p.rows,count:p.rows.length,uploadedAt:new Date().toISOString(),source:'upload'};}
+      saveLocal();
+      $('uploadPanel').replaceChildren(el('div',{class:'notice ok'},el('strong',{text:'Saved in this browser. '}),'Updated '+keys.map(k=>MONTH_LONG[+k.slice(5,7)-1]+' '+k.slice(0,4)).join(', ')+'.'));
+      pending=null;setTimeout(()=>{$('uploadPanel').hidden=true;},6000);rebuild();
+    }catch(e){
+      try{local=JSON.parse(prev);}catch(_){local={};}
+      $('uploadPanel').replaceChildren(el('div',{class:'notice err'},el('strong',{text:'Not saved. '}),"This browser wouldn't store the data. Private or incognito windows often block it. Open the dashboard in a normal window and try again."));
+    }
+    $('fileInput').value='';
+  }
+
+  /* ---------- wiring ---------- */
+  $('season').addEventListener('change',e=>{state.season=e.target.value;openClub=null;render();});
+  $('region').addEventListener('change',e=>{state.region=e.target.value;render();});
+  $('fileInput').addEventListener('change',e=>{if(e.target.files&&e.target.files.length)onFiles([...e.target.files]);});
+  let rt;window.addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(()=>{if(Object.keys(store).length)render();},150);});
+
+  let armed=false;
+  $('clearLocal').addEventListener('click',e=>{const b=e.currentTarget;
+    if(!armed){armed=true;b.textContent='Click again to remove';setTimeout(()=>{armed=false;b.textContent='Remove my uploads';},4000);return;}
+    armed=false;b.textContent='Remove my uploads';local={};try{localStorage.removeItem(LS_KEY);}catch(_){}rebuild();});
+  $('uploadBtn').hidden=false;
+  loadLocal();
+  if(!window.BNZ_BASELINE&&!Object.keys(local).length){$('loading').textContent='No data found. Upload a GameDay player registration export to start.';}
+  rebuild();
+})();
+</script>
+</body>
+</html>
