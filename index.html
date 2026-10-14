@@ -114,6 +114,15 @@ tr.detail td{background:var(--bg);text-align:left;padding:10px 12px}
 .bar-row .v{text-align:right;font-weight:700}
 .bar-note{font-size:.8rem;color:var(--muted);margin-top:8px}
 
+.growth{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px}
+@media (max-width:900px){.growth{grid-template-columns:minmax(0,1fr)}}
+.growth h3{font-size:.92rem;font-weight:700;margin-bottom:2px}
+.growth .desc{font-size:.84rem;color:var(--muted);margin:0 0 8px}
+.growth table td,.growth table th{padding:6px 6px}
+.proj{display:flex;flex-direction:column;gap:12px}
+.proj-range{font-family:var(--font-num);font-size:2.4rem;font-weight:600;line-height:1.05;color:var(--accent)}
+.proj-row{display:flex;justify-content:space-between;gap:12px;border-top:1px solid var(--line);padding-top:8px;font-size:.9rem}
+.proj-row strong{font-variant-numeric:tabular-nums;white-space:nowrap}
 .watch{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
 @media (max-width:900px){.watch{grid-template-columns:minmax(0,1fr)}}
 .watch ul{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}
@@ -168,6 +177,15 @@ body{margin:0}
         <div class="legend"><span class="key"><i></i><span id="legS">This season</span></span><span class="key"><i class="prev"></i><span id="legP">Last season</span></span></div>
       </div>
       <div class="chart-wrap" id="chartWrap"><div class="tip" id="tip" hidden></div></div>
+    </section>
+
+    <section class="panel" id="growth">
+      <div class="panel-head"><h2>Growth trajectory</h2><span class="footnote" id="growthNote"></span></div>
+      <div class="growth">
+        <div><h3>Each month vs last season</h3><p class="desc">Registrations in the month against the same month last season.</p><div class="table-scroll"><table id="gMonthly"></table></div></div>
+        <div><h3>Running total at month end</h3><p class="desc">Season total so far against last season at the same point.</p><div class="table-scroll"><table id="gCumulative"></table></div></div>
+        <div class="proj"><div><h3>Projected season total</h3><p class="desc">Last season's pattern applied to the rest of this season.</p></div><div class="proj-range" id="gRange">—</div><div id="gProj"></div></div>
+      </div>
     </section>
 
     <div class="grid2">
@@ -309,6 +327,7 @@ body{margin:0}
     const seen=new Map();let dups=0;for(const r of sRows){const k=r.d+'|'+r.t+'|'+r.club+'|'+r.assoc;if(seen.has(k))dups++;else seen.set(k,1);}
 
     drawChart(sRows,pRowsAll,S,P,hasP,L);
+    drawGrowth(sRows,pRowsAll,pYtd,S,P,hasP,L,latest);
     drawTable(sRows,pRowsAll,pYtd,S,P,hasP,L);
     drawBars(sRows,pYtd,hasP,P,L);
     drawWatch(sRows,pRowsAll,pYtd,hasP,P,noClub,dups,L);
@@ -406,6 +425,46 @@ body{margin:0}
     tb.append(ttr);
     t.replaceChildren(el('thead',null,head),tb);
     $('tableNote').textContent=hasP?'* Last yr is '+P+' registrations up to '+dateFromDay(L,P)+', the same point in the season as the latest '+S+' data.':'';
+  }
+  function pctPill(a,b){
+    if(!b)return el('span',{class:'pill '+(a?'new':'flat'),text:a?'New':'—'});
+    const pct=Math.round((a-b)/b*100);
+    return el('span',{class:'pill '+(pct>0?'up':pct<0?'down':'flat'),text:(pct>0?'+':'')+pct+'%'});
+  }
+  function drawGrowth(sRows,pRows,pYtd,S,P,hasP,L,latest){
+    const sec=$('growth');sec.hidden=!hasP;if(!hasP)return;
+    const li=monthIdx(latest),lday=+latest.slice(8,10);
+    const sM=new Array(12).fill(0),pM=new Array(12).fill(0);
+    for(const r of sRows)sM[monthIdx(r.d)]++;
+    for(const r of pRows){const i=monthIdx(r.d);if(i<li||(i===li&&dayIndex(r.d,P)<=L))pM[i]++;}
+    let first=0;while(first<li&&!sM[first]&&!pM[first])first++;
+    const head=(a,b,c)=>el('thead',null,el('tr',null,el('th',{scope:'col',text:'Month'}),el('th',{scope:'col',text:a}),el('th',{scope:'col',text:b}),el('th',{scope:'col',text:c})));
+    const mRows=[],cRows=[];let cs=0,cp=0;
+    const sDays=new Array(12).fill(0);
+    for(let i=0;i<=li;i++){
+      const partial=i===li&&lday<monthEndDay(i,S)-(i?monthEndDay(i-1,S):-1);
+      const label=MONTHS[i]+(partial?' (1–'+lday+')':'');
+      cs+=sM[i];cp+=pM[i];
+      if(i<first)continue;
+      mRows.push(el('tr',null,el('td',{text:label}),el('td',{class:'tab',text:fmt(sM[i])}),el('td',{class:'tab muted',text:fmt(pM[i])}),el('td',null,pctPill(sM[i],pM[i]))));
+      cRows.push(el('tr',null,el('td',{text:i===li?'To '+lday+' '+MONTHS[i]:'End '+MONTHS[i]}),el('td',{class:'tab',text:fmt(cs)}),el('td',{class:'tab muted',text:fmt(cp)}),el('td',null,pctPill(cs,cp))));
+    }
+    $('gMonthly').replaceChildren(head(S,P,'Growth'),el('tbody',null,...mRows));
+    $('gCumulative').replaceChildren(head(S,P,'Growth'),el('tbody',null,...cRows));
+    const now=sRows.length,pTot=pRows.length,pNow=pYtd.length;
+    const add=now+(pTot-pNow);
+    const share=pNow?Math.round(now/(pNow/pTot)):null;
+    const lo=share==null?add:Math.min(add,share),hi=share==null?add:Math.max(add,share);
+    const g=v=>{const x=Math.round((v-pTot)/pTot*100);return (x>0?'+':'')+x+'% on '+P;};
+    $('gRange').textContent=pTot?(lo===hi?fmt(lo):fmt(lo)+' – '+fmt(hi)):'—';
+    const rows=[];
+    if(pTot){
+      rows.push(el('div',{class:'proj-row'},el('span',{text:'Same numbers as last season from here ('+fmt(pTot-pNow)+' more)'}),el('strong',{text:fmt(add)+' · '+g(add)})));
+      if(share!=null)rows.push(el('div',{class:'proj-row'},el('span',{text:'Same share as last season ('+Math.round(pNow/pTot*100)+'% in by '+dateFromDay(L,P)+')'}),el('strong',{text:fmt(share)+' · '+g(share)})));
+      rows.push(el('p',{class:'footnote',text:'A guide, not a forecast. It assumes the rest of the season follows last season’s timing.'}));
+    }
+    $('gProj').replaceChildren(...rows);
+    $('growthNote').textContent='Compared with '+P+' to '+dateFromDay(L,P);
   }
   function changePill(a,b){
     if(b===0&&a>0)return el('span',{class:'pill new',text:'New'});
