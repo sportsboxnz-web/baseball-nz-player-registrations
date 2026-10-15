@@ -136,6 +136,35 @@ tr.detail td{background:var(--bg);text-align:left;padding:10px 12px}
 .log td.tab{text-align:right}
 .footnote{font-size:.82rem;color:var(--muted)}
 .loading{padding:40px 0;text-align:center;color:var(--muted)}
+@media print{
+  @page{size:A4 portrait;margin:12mm}
+  :root:not(#print),:root[data-theme]:not(#print){
+    --bg:#ffffff; --panel:#ffffff; --ink:#17202b; --muted:#5a6573; --faint:#8a94a1; --line:#dde2e8; --line-strong:#c4ccd6;
+    --accent:#1d4e89; --accent-soft:rgba(29,78,137,.11); --prev:#8d97a5;
+    --up:#1d7a46; --up-soft:rgba(29,122,70,.11); --down:#b3332b; --down-soft:rgba(179,51,43,.10); --warn:#9a6200; --warn-soft:rgba(154,98,0,.11);
+    color-scheme:light}
+  html,body{background:#fff!important}
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  body{font-size:12px}
+  .wrap{max-width:none;padding:0;gap:12px}
+  .controls,#uploadPanel,#localBar,.tip,#loading,#clubs .panel-head .footnote{display:none!important}
+  .panel,.tile{box-shadow:none;break-inside:avoid;page-break-inside:avoid}
+  #clubs{break-inside:auto;page-break-inside:auto;break-before:page;page-break-before:always}
+  .proj-row{flex-direction:column;gap:2px}
+  .tiles{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+  .growth{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:16px}
+  .grid2{grid-template-columns:minmax(0,1fr)!important}
+  .stack.side{display:grid;grid-template-columns:1fr 1fr}
+  .watch{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+  .table-scroll{overflow:visible;margin:0;padding:0}
+  thead{display:table-header-group}
+  tr{break-inside:avoid;page-break-inside:avoid}
+  tr.detail{display:none}
+  .club-btn .caret{display:none}
+  .tile .big{font-size:2rem}
+  .proj-range{font-size:1.9rem}
+  h1{font-size:1.4rem}
+}
 @media (prefers-reduced-motion:no-preference){.bar-fill{transition:width .3s ease}}
 *,*::before,*::after{box-sizing:border-box}
 body{margin:0}
@@ -197,7 +226,7 @@ body{margin:0}
         <div class="table-scroll"><table id="clubTable"></table></div>
         <p class="footnote" id="tableNote"></p>
       </section>
-      <div class="stack">
+      <div class="stack side">
         <section class="panel" id="tiers">
           <div class="panel-head"><h2>By membership tier</h2></div>
           <div class="bars" id="tierBars"></div>
