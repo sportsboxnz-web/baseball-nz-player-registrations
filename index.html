@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&family=Source+Sans+3:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <style>
 /* Layout: one operational column. Header and controls, headline tiles, season-vs-season chart, club table beside the mix panels, watch list, data log. */
 :root{
@@ -136,6 +137,30 @@ tr.detail td{background:var(--bg);text-align:left;padding:10px 12px}
 .log td.tab{text-align:right}
 .footnote{font-size:.82rem;color:var(--muted)}
 .loading{padding:40px 0;text-align:center;color:var(--muted)}
+/* Where players live */
+:root{--pJ:#2a78d6;--pY:#eb6834;--pS:#1baf7a;--sea:#e4ecf2;--land:#fbfaf6;--coast:#b9c4cc}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--sea:#121a22;--land:#1f2833;--coast:#3a4654}}
+:root[data-theme="dark"]{--sea:#121a22;--land:#1f2833;--coast:#3a4654}
+.mapgrid{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:900px){.mapgrid{grid-template-columns:minmax(0,1fr)}}
+.mapbox{position:relative;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+#suburbMap{height:560px;background:var(--sea)}
+.map-legend{position:absolute;z-index:500;left:10px;bottom:10px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:.82rem;color:var(--muted);display:flex;flex-direction:column;gap:2px}
+.map-legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{display:inline-block;width:10px;height:10px;border-radius:3px}
+.subs-list{max-height:560px;overflow:auto}
+.subs-list td.mix{width:70px}
+.mixbar{display:flex;gap:2px;height:6px;border-radius:3px;overflow:hidden}
+.mixbar i{display:block;height:100%}
+.city-flag{font-size:.72rem;font-weight:600;color:var(--warn);background:var(--warn-soft);border-radius:4px;padding:0 5px;margin-left:4px}
+.leaflet-container{font-family:var(--font-body)}
+.leaflet-tooltip.mtip{background:var(--panel);color:var(--ink);border:1px solid var(--line-strong);border-radius:8px;box-shadow:0 4px 14px rgba(0,0,0,.12);padding:8px 10px;font-size:.85rem}
+.leaflet-tooltip.mtip .row{display:flex;justify-content:space-between;gap:14px}
+.leaflet-tooltip-top.mtip:before{border-top-color:var(--line-strong)}
+.suburb-pie{cursor:pointer}
+.print-only{display:none}
+.map-empty{padding:30px 0;text-align:center;color:var(--muted)}
+body.printing #suburbMap{width:680px!important;height:520px!important}
 @media print{
   @page{size:A4 portrait;margin:12mm}
   :root:not(#print),:root[data-theme]:not(#print){
@@ -164,6 +189,15 @@ tr.detail td{background:var(--bg);text-align:left;padding:10px 12px}
   .tile .big{font-size:2rem}
   .proj-range{font-size:1.9rem}
   h1{font-size:1.4rem}
+  #where{break-before:page;page-break-before:always;break-inside:avoid;page-break-inside:avoid}
+  .mapgrid{grid-template-columns:minmax(0,1fr)!important;gap:10px}
+  #suburbMap{width:680px!important;height:520px!important}
+  .leaflet-control-zoom{display:none!important}
+  .subs-list{max-height:none;overflow:visible;column-count:2;column-gap:20px}
+  .subs-list table{font-size:10px}
+  .subs-list td,.subs-list th{padding:4px 6px}
+  .subs-list tr.more{display:none}
+  .print-only{display:block!important}
 }
 @media (prefers-reduced-motion:no-preference){.bar-fill{transition:width .3s ease}}
 *,*::before,*::after{box-sizing:border-box}
@@ -240,6 +274,19 @@ body{margin:0}
       </div>
     </div>
 
+    <section class="panel" id="where">
+      <div class="panel-head"><h2>Where players live</h2><span class="footnote" id="whereNote"></span></div>
+      <div id="whereBody" class="mapgrid">
+        <div class="mapbox"><div id="suburbMap" role="img" aria-label="Map of registered players by home suburb"></div>
+          <div class="map-legend"><span><i class="sw" style="background:var(--pJ)"></i>Junior</span><span><i class="sw" style="background:var(--pY)"></i>Youth</span><span><i class="sw" style="background:var(--pS)"></i>Senior</span><span><svg width="12" height="12" aria-hidden="true"><circle cx="6" cy="6" r="4.5" fill="none" stroke="currentColor" stroke-dasharray="2 2" stroke-width="1.4"/></svg>City only, suburb not given</span></div>
+        </div>
+        <div class="subs-list"><table id="suburbTable"></table></div>
+      </div>
+      <div id="whereEmpty" class="map-empty" hidden></div>
+      <p class="footnote print-only" id="wherePrint"></p>
+      <p class="footnote" id="whereFoot"></p>
+    </section>
+
     <section class="panel" id="watchlist">
       <div class="panel-head"><h2>Watch list</h2><span class="footnote" id="watchNote"></span></div>
       <div class="watch">
@@ -258,6 +305,8 @@ body{margin:0}
 </div>
 
 <script src="data.js"></script>
+<script src="suburbs.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script>
 (function(){
   const MONTHS=['Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar','Apr','May','Jun'];
@@ -361,7 +410,55 @@ body{margin:0}
     drawBars(sRows,pYtd,hasP,P,L);
     drawWatch(sRows,pRowsAll,pYtd,hasP,P,noClub,dups,L);
     drawLog();
+    drawWhere(S);
   }
+
+  /* ---------- where players live (suburb snapshot) ---------- */
+  const SUB=window.BNZ_SUBURBS;
+  const PCOL={j:'#2a78d6',y:'#eb6834',s:'#1baf7a'};
+  let lmap=null,lmarks=null,lastBounds=null;
+  function pie(p,r){const t=p.j+p.y+p.s,sz=2*r+4,c=r+2;const parts=['j','y','s'].filter(k=>p[k]);let a=-Math.PI/2,s='';
+    if(parts.length===1)s='<circle cx="'+c+'" cy="'+c+'" r="'+r+'" fill="'+PCOL[parts[0]]+'"/>';
+    else parts.forEach(k=>{const f=p[k]/t,b=a+f*2*Math.PI;s+='<path d="M'+c+','+c+' L'+(c+r*Math.cos(a))+','+(c+r*Math.sin(a))+' A'+r+','+r+' 0 '+(f>.5?1:0)+' 1 '+(c+r*Math.cos(b))+','+(c+r*Math.sin(b))+' Z" fill="'+PCOL[k]+'" stroke="#fff" stroke-width="1.5"/>';a=b;});
+    s+=p.c?'<circle cx="'+c+'" cy="'+c+'" r="'+r+'" fill="none" stroke="#17202b" stroke-opacity=".7" stroke-width="1.5" stroke-dasharray="3 2.5"/>':'<circle cx="'+c+'" cy="'+c+'" r="'+r+'" fill="none" stroke="#fff" stroke-width="1.5"/>';
+    return {html:'<svg width="'+sz+'" height="'+sz+'"'+(p.c?' style="opacity:.45"':'')+'>'+s+'</svg>',sz};}
+  function drawWhere(S){
+    const sec=$('where');if(!SUB){sec.hidden=true;return;}sec.hidden=false;
+    const empty=$('whereEmpty'),body=$('whereBody');
+    if(S!==SUB.season){body.hidden=true;empty.hidden=false;empty.textContent='Home suburbs are available for '+SUB.season+' only.';$('whereNote').textContent='';$('whereFoot').textContent='';return;}
+    if(state.region==='Masters'){body.hidden=true;empty.hidden=false;empty.textContent='Home suburbs are grouped by where players live, so Masters players are shown within their home region. Choose All regions or a region to see them.';$('whereNote').textContent='';$('whereFoot').textContent='';return;}
+    body.hidden=false;empty.hidden=true;
+    const pts=SUB.pts.filter(p=>!state.region||p.r===state.region).sort((a,b)=>(b.j+b.y+b.s)-(a.j+a.y+a.s));
+    const tot=pts.reduce((a,p)=>a+p.j+p.y+p.s,0),city=pts.filter(p=>p.c).reduce((a,p)=>a+p.j+p.y+p.s,0);
+    $('whereNote').textContent=fmt(tot)+' players on the map · '+pts.filter(p=>!p.c).length+' suburbs';
+    $('whereFoot').textContent='Home suburb snapshot from the GameDay address export, '+niceDate(SUB.asOf)+'. Regions here are where players live, which can differ from their club\'s region. '+(city?fmt(city)+' gave only a city and sit on the city centre (dashed). ':'')+(state.region?'':fmt(SUB.unmapped)+' overseas or invalid addresses are not shown. ')+'Counts only, no names or addresses.';
+    // table
+    const mix=p=>{const t=p.j+p.y+p.s;const b=el('div',{class:'mixbar'});['j','y','s'].forEach(k=>{if(p[k]){const i=el('i');i.style.width=(p[k]/t*100)+'%';i.style.background=PCOL[k];b.append(i);}});return b;};
+    const head=el('tr',null,el('th',{scope:'col',text:'Suburb'}),el('th',{scope:'col',text:'Mix'}),el('th',{scope:'col',text:'J'}),el('th',{scope:'col',text:'Y'}),el('th',{scope:'col',text:'S'}),el('th',{scope:'col',text:'Total'}));
+    const rows=pts.map((p,i)=>{const nm=el('td',null,p.n);if(p.c)nm.append(el('span',{class:'city-flag',text:'city only'}));
+      const tr=el('tr',null,nm,el('td',{class:'mix'},mix(p)),el('td',{class:'tab',text:p.j}),el('td',{class:'tab',text:p.y}),el('td',{class:'tab',text:p.s}),el('td',{class:'tab ytd',text:p.j+p.y+p.s}));
+      if(i>=30)tr.className='more';
+      tr.style.cursor='pointer';tr.addEventListener('click',()=>{if(lmap){lmap.flyTo([p.a,p.o],Math.max(lmap.getZoom(),11),{duration:.5});}});return tr;});
+    $('suburbTable').replaceChildren(el('thead',null,head),el('tbody',null,...rows));
+    $('wherePrint').textContent=pts.length>30?'Top 30 of '+pts.length+' areas shown. The full list is on the online dashboard.':'';
+    // map
+    if(typeof L==='undefined'){$('suburbMap').textContent='Map could not load. Check your internet connection.';return;}
+    if(!lmap){lmap=L.map('suburbMap',{zoomSnap:.25,attributionControl:true,scrollWheelZoom:false});
+      lmap.attributionControl.setPrefix('').addAttribution('Coastline © OpenStreetMap contributors');
+      L.geoJSON(SUB.land,{interactive:false,style:()=>({color:getComputedStyle(document.documentElement).getPropertyValue('--coast').trim()||'#b9c4cc',weight:1,fillColor:getComputedStyle(document.documentElement).getPropertyValue('--land').trim()||'#fbfaf6',fillOpacity:1})}).addTo(lmap);
+      lmarks=L.layerGroup().addTo(lmap);}
+    lmarks.clearLayers();
+    for(const p of pts){const t=p.j+p.y+p.s,r=3+2.4*Math.sqrt(t),{html,sz}=pie(p,r);
+      const tip='<b>'+p.n+'</b>'+(p.c?'<div class="muted" style="font-size:.78rem">City only, suburb not given</div>':'')+[['j','Junior'],['y','Youth'],['s','Senior']].map(([k,l])=>'<div class="row"><span><i class="sw" style="background:'+PCOL[k]+';margin-right:5px"></i>'+l+'</span><span>'+p[k]+'</span></div>').join('')+'<div class="row" style="border-top:1px solid var(--line);margin-top:4px;padding-top:4px"><span>Total</span><strong>'+t+'</strong></div>';
+      L.marker([p.a,p.o],{icon:L.divIcon({className:'suburb-pie',html,iconSize:[sz,sz]}),riseOnHover:true,keyboard:false}).bindTooltip(tip,{className:'mtip',direction:'top',offset:[0,-r]}).addTo(lmarks);}
+    // fit to the region's suburbs (city-only centres included); NZ view when all regions
+    const fitPts=state.region?pts:SUB.pts;
+    lastBounds=fitPts.length?L.latLngBounds(fitPts.map(p=>[p.a,p.o])).pad(.08):null;
+    lmap.invalidateSize();if(lastBounds)lmap.fitBounds(lastBounds,{animate:false,maxZoom:12});
+  }
+  function printMap(on){document.body.classList.toggle('printing',on);if(lmap){lmap.invalidateSize();if(lastBounds)lmap.fitBounds(lastBounds,{animate:false,maxZoom:12});}}
+  window.addEventListener('beforeprint',()=>printMap(true));
+  window.addEventListener('afterprint',()=>printMap(false));
 
   function cumulative(rs,season,maxDay){
     const counts=new Array(maxDay+1).fill(0);
