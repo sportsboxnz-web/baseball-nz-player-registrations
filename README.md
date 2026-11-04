@@ -6,7 +6,7 @@ A dashboard of Baseball New Zealand national membership registrations by club, m
 
 - `index.html`: the dashboard
 - `data.js`: the built-in data (2025/26 and 2026/27 GameDay Player Registration exports, loaded 14 Oct 2026)
-- `suburbs.js`: home suburb snapshot for the "Where players live" map (2026/27, GameDay address export of 30 Oct 2026). Counts by suburb only, no names or addresses
+- `suburbs.js`: home suburb snapshot for the "Where players live" map (2026/27, GameDay address export of 5 Nov 2026). Counts by suburb only, no names or addresses
 
 ## Monthly updates
 
